@@ -21,6 +21,7 @@ import ru.ilyalagutin.urlshortener.dto.ShortUrlResponse;
 import ru.ilyalagutin.urlshortener.dto.UpdateShortUrlRequest;
 import ru.ilyalagutin.urlshortener.entity.ShortUrl;
 import ru.ilyalagutin.urlshortener.exception.InvalidUrlException;
+import ru.ilyalagutin.urlshortener.exception.ShortCodeGenerationException;
 import ru.ilyalagutin.urlshortener.exception.ShortUrlExpiredException;
 import ru.ilyalagutin.urlshortener.cache.RedisShortUrlCache;
 import ru.ilyalagutin.urlshortener.repository.ShortUrlRepository;
@@ -81,7 +82,21 @@ class ShortUrlServiceTest {
         when(shortUrlRepository.existsByShortCode("abc1234")).thenReturn(true);
 
         assertThatThrownBy(() -> shortUrlService.createShortUrl(request))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(ShortCodeGenerationException.class);
+    }
+
+    @Test
+    void retriesWhenGeneratedCodeAlreadyExists() {
+        CreateShortUrlRequest request = new CreateShortUrlRequest("https://example.com", null);
+        when(shortCodeGenerator.generate()).thenReturn("abc1234", "def5678");
+        when(shortUrlRepository.existsByShortCode("abc1234")).thenReturn(true);
+        when(shortUrlRepository.existsByShortCode("def5678")).thenReturn(false);
+        when(shortUrlRepository.save(any(ShortUrl.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ShortUrlResponse response = shortUrlService.createShortUrl(request);
+
+        assertThat(response.shortCode()).isEqualTo("def5678");
+        verify(shortCodeGenerator, times(2)).generate();
     }
 
     @Test

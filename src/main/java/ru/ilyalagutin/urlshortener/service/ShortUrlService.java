@@ -9,15 +9,17 @@ import ru.ilyalagutin.urlshortener.dto.ShortUrlResponse;
 import ru.ilyalagutin.urlshortener.dto.ShortUrlStatsResponse;
 import ru.ilyalagutin.urlshortener.dto.UpdateShortUrlRequest;
 import ru.ilyalagutin.urlshortener.entity.ShortUrl;
-import ru.ilyalagutin.urlshortener.exception.ShortCodeGenerationException;
-import ru.ilyalagutin.urlshortener.exception.ShortUrlExpiredException;
 import ru.ilyalagutin.urlshortener.exception.InvalidUrlException;
+import ru.ilyalagutin.urlshortener.exception.ShortCodeGenerationException;
 import ru.ilyalagutin.urlshortener.exception.ShortUrlNotFoundException;
+import ru.ilyalagutin.urlshortener.exception.ShortUrlExpiredException;
 import ru.ilyalagutin.urlshortener.repository.ShortUrlRepository;
 
 @Service
 @Transactional(readOnly = true)
 public class ShortUrlService {
+
+    private static final int MAX_GENERATION_ATTEMPTS = 5;
 
     private final ShortUrlRepository shortUrlRepository;
     private final RandomShortCodeGenerator shortCodeGenerator;
@@ -99,13 +101,15 @@ public class ShortUrlService {
     }
 
     private String generateShortCode() {
-        String shortCode = shortCodeGenerator.generate();
+        for (int attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
+            String shortCode = shortCodeGenerator.generate();
 
-        if (shortUrlRepository.existsByShortCode(shortCode)) {
-            throw new ShortCodeGenerationException();
+            if (!shortUrlRepository.existsByShortCode(shortCode)) {
+                return shortCode;
+            }
         }
 
-        return shortCode;
+        throw new ShortCodeGenerationException();
     }
 
     private ShortUrl findActiveShortUrl(String shortCode) {

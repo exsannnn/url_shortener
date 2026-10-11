@@ -20,7 +20,7 @@ jobs:
                   cache: maven
 
             - name: Run tests
-              run: mvn --batch-mode test
+              run: mvn --batch-mode verify
 
     docker-build:
         needs: test

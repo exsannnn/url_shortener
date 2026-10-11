@@ -32,6 +32,7 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.GONE, exception.getMessage(), request);
     }
 
+
     @ExceptionHandler({InvalidUrlException.class, ConstraintViolationException.class})
     public ResponseEntity<ApiErrorResponse> handleBadRequest(
             RuntimeException exception,

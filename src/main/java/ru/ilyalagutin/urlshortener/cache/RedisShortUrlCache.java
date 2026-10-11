@@ -48,6 +48,12 @@ public class RedisShortUrlCache {
         try {
             String value = objectMapper.writeValueAsString(shortUrlResponse);
             Duration ttl = getTtl(shortUrlResponse.expiresAt());
+
+            if (ttl.isZero() || ttl.isNegative()) {
+                delete(shortUrlResponse.shortCode());
+                return;
+            }
+
             redisTemplate.opsForValue().set(buildKey(shortUrlResponse.shortCode()), value, ttl);
         } catch (DataAccessException | JacksonException exception) {
             LOGGER.warn("Unable to cache short URL {} in Redis", shortUrlResponse.shortCode(), exception);
